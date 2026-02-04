@@ -168,11 +168,11 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        /* 精密列印優化系統 */
+        /* 強化列印樣式：補足外邊框 */
         @media print {
           @page {
             size: A4 landscape;
-            margin: 0.8cm 0.5cm; /* 增加上下邊距，減少左右邊距 */
+            margin: 1cm 0.6cm;
           }
           
           header, .no-print { display: none !important; }
@@ -185,7 +185,11 @@ export default function App() {
             print-color-adjust: exact !important;
           }
 
-          main { padding: 0 !important; max-width: 100% !important; }
+          main { 
+            padding: 0 !important; 
+            margin: 0 !important;
+            max-width: 100% !important; 
+          }
 
           .print-title {
             display: block !important;
@@ -201,51 +205,49 @@ export default function App() {
             justify-content: center;
             gap: 20px;
             font-size: 9pt;
-            margin-bottom: 15px;
-            color: #666;
+            margin-bottom: 10px;
+            color: #333;
           }
 
           .bg-white { border: none !important; box-shadow: none !important; }
           .overflow-x-auto { overflow: visible !important; }
           
+          /* 表格最外層強化邊框 */
           table { 
             width: 100% !important; 
-            table-layout: fixed !important; /* 強制固定寬度分配 */
+            table-layout: fixed !important;
             border-collapse: collapse !important;
             font-size: 7.5pt !important;
+            border: 1px solid #333 !important; /* 強制加上實心外邊框 */
+            box-sizing: border-box !important;
           }
 
+          /* 確保所有格子都有細線 */
           th, td { 
-            border: 0.2pt solid #aaa !important; /* 更細的線條避免視覺擁擠 */
+            border: 0.5pt solid #666 !important; /* 稍微加深顏色確保列印清晰 */
             padding: 2px 0 !important;
             height: 22pt !important;
             text-align: center !important;
           }
 
-          /* 欄位寬度分配 - 精確計算以符合 A4 寬度 */
-          .col-name { width: 50pt !important; }
+          /* 寬度分配 */
+          .col-name { width: 55pt !important; }
           .col-type { width: 45pt !important; }
-          .col-plate { width: 55pt !important; }
-          .col-date { width: auto !important; } /* 日期均分 */
+          .col-plate { width: 60pt !important; }
           .col-stat { width: 30pt !important; }
 
-          /* 列印時移除固定欄位效果 */
           .sticky { 
             position: static !important; 
             background: transparent !important;
             box-shadow: none !important;
           }
           
-          /* 文字顏色加強 */
-          .text-red-500 { color: #d00 !important; }
-          .text-blue-500 { color: #00d !important; }
-          .text-slate-300 { color: #999 !important; }
+          .text-red-500 { color: #cc0000 !important; }
+          .text-blue-500 { color: #0000cc !important; }
           
-          /* 移除背景色避免列印過黑 */
-          .bg-slate-50, .bg-orange-50 { background: transparent !important; }
+          .bg-orange-50 { background-color: #fff9f5 !important; }
         }
 
-        /* 預設隱藏列印內容 */
         .print-title, .print-legend { display: none; }
 
         /* 介面寬度控制 */
@@ -312,8 +314,8 @@ export default function App() {
       <div className="print-title">{year} 年 {month + 1} 月 車隊排班表</div>
       <div className="print-legend">
         <span>✕：休假</span>
-        <span>◇：機動</span>
-        <span>特：特休</span>
+        <span>◇：機動代班</span>
+        <span>特：特休假</span>
       </div>
 
       <main className="p-4 sm:p-6 max-w-screen-2xl mx-auto">
@@ -329,18 +331,19 @@ export default function App() {
           </div>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-          <div className="overflow-x-auto custom-scrollbar">
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden print:overflow-visible">
+          <div className="overflow-x-auto custom-scrollbar print:overflow-visible">
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
                   <th className="col-name p-3 sticky left-0 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider">姓名</th>
+                  
+                  {/* 列印用與網頁用欄位切換 */}
+                  <th className="hidden print:table-cell col-type p-2 font-black text-slate-500 text-[9px] border-r">車型</th>
+                  <th className="hidden print:table-cell col-plate p-2 font-black text-slate-500 text-[9px] border-r">車號</th>
+                  
                   <th className="col-type p-3 sticky left-[80px] bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider no-print">車型</th>
                   <th className="col-plate p-3 sticky left-[160px] bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider no-print">車號</th>
-                  
-                  {/* 列印時顯示的緊湊欄位 */}
-                  <th className="hidden print:table-cell col-type p-2 font-black text-slate-500 text-[9px]">車型</th>
-                  <th className="hidden print:table-cell col-plate p-2 font-black text-slate-500 text-[9px]">車號</th>
 
                   {calendarDays.map(d => (
                     <th key={d.date} className={`col-date p-1 border-r text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
@@ -359,16 +362,17 @@ export default function App() {
                       <td className="col-name p-3 font-bold sticky left-0 bg-white z-20 border-r text-slate-700 whitespace-nowrap overflow-hidden">
                         {driver.name.split('(')[0]}
                       </td>
+                      
+                      {/* 列印版顯示欄位 */}
+                      <td className="hidden print:table-cell col-type text-slate-500 text-[8px] border-r">{driver.carType}</td>
+                      <td className="hidden print:table-cell col-plate text-slate-500 text-[8px] border-r">{driver.carPlate}</td>
+
                       <td className="col-type p-3 text-slate-400 font-bold sticky left-[80px] bg-white z-20 border-r text-[10px] no-print">
                         {driver.carType}
                       </td>
                       <td className="col-plate p-3 font-mono text-slate-300 sticky left-[160px] bg-white z-20 border-r text-[10px] no-print">
                         {driver.carPlate}
                       </td>
-
-                      {/* 列印版顯示欄位 */}
-                      <td className="hidden print:table-cell col-type text-slate-500 text-[8px]">{driver.carType}</td>
-                      <td className="hidden print:table-cell col-plate text-slate-500 text-[8px]">{driver.carPlate}</td>
 
                       {calendarDays.map(day => {
                         const s = schedule[`${driver.id}_${day.fullDate}`];
