@@ -141,7 +141,7 @@ export default function App() {
 
   const save = () => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({ drivers, schedule }));
-    alert('儲存成功！資料已儲存在您的瀏覽器中。');
+    alert('儲存成功！');
   };
 
   const addDriver = () => {
@@ -161,211 +161,215 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans selection:bg-blue-100">
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
       <style>{`
         /* 自定義捲軸 */
-        .custom-scrollbar::-webkit-scrollbar { height: 8px; width: 8px; }
+        .custom-scrollbar::-webkit-scrollbar { height: 6px; width: 6px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        /* 列印優化系統 */
+        /* 精密列印優化系統 */
         @media print {
           @page {
             size: A4 landscape;
-            margin: 0.5cm;
+            margin: 0.8cm 0.5cm; /* 增加上下邊距，減少左右邊距 */
           }
           
           header, .no-print { display: none !important; }
           
           body { 
             background: white !important; 
-            padding: 0 !important;
             margin: 0 !important;
+            padding: 0 !important;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
           }
 
-          main {
-            padding: 0 !important;
-            margin: 0 !important;
-            max-width: 100% !important;
-          }
+          main { padding: 0 !important; max-width: 100% !important; }
 
           .print-title {
             display: block !important;
             text-align: center;
-            font-size: 16pt;
+            font-size: 18pt;
             font-weight: bold;
-            margin-bottom: 10px;
+            margin-bottom: 5px;
+            color: black;
           }
 
-          /* 表格強制調整 */
+          .print-legend {
+            display: flex !important;
+            justify-content: center;
+            gap: 20px;
+            font-size: 9pt;
+            margin-bottom: 15px;
+            color: #666;
+          }
+
           .bg-white { border: none !important; box-shadow: none !important; }
           .overflow-x-auto { overflow: visible !important; }
           
           table { 
             width: 100% !important; 
-            table-layout: fixed !important;
+            table-layout: fixed !important; /* 強制固定寬度分配 */
             border-collapse: collapse !important;
-            font-size: 7.5pt !important; /* 極細化字體以符合寬度 */
+            font-size: 7.5pt !important;
           }
 
           th, td { 
-            border: 0.5pt solid #ccc !important; 
-            padding: 2px 1px !important;
-            height: auto !important;
+            border: 0.2pt solid #aaa !important; /* 更細的線條避免視覺擁擠 */
+            padding: 2px 0 !important;
+            height: 22pt !important;
+            text-align: center !important;
           }
 
-          /* 固定欄位在列印時取消固定，避免遮蓋 */
+          /* 欄位寬度分配 - 精確計算以符合 A4 寬度 */
+          .col-name { width: 50pt !important; }
+          .col-type { width: 45pt !important; }
+          .col-plate { width: 55pt !important; }
+          .col-date { width: auto !important; } /* 日期均分 */
+          .col-stat { width: 30pt !important; }
+
+          /* 列印時移除固定欄位效果 */
           .sticky { 
             position: static !important; 
-            background: white !important;
+            background: transparent !important;
             box-shadow: none !important;
           }
-
-          /* 顯示特定列印內容 */
-          .show-on-print { display: table-cell !important; }
-          .mobile-hide { display: table-cell !important; }
-
-          /* 圖例縮小放在標題下方 */
-          .print-legend {
-            display: flex !important;
-            justify-content: center;
-            gap: 15px;
-            font-size: 8pt;
-            margin-bottom: 10px;
-          }
+          
+          /* 文字顏色加強 */
+          .text-red-500 { color: #d00 !important; }
+          .text-blue-500 { color: #00d !important; }
+          .text-slate-300 { color: #999 !important; }
+          
+          /* 移除背景色避免列印過黑 */
+          .bg-slate-50, .bg-orange-50 { background: transparent !important; }
         }
 
-        /* 介面隱藏列印專用內容 */
+        /* 預設隱藏列印內容 */
         .print-title, .print-legend { display: none; }
 
-        /* 針對 iPad / Tablet 的特殊微調 */
-        @media (min-width: 768px) and (max-width: 1024px) {
-          .tablet-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-        }
-
-        /* 針對 iPhone / Samsung S系列 (Mobile) */
-        @media (max-width: 640px) {
-          .mobile-hide { display: none !important; }
-          .mobile-sticky-left { position: sticky; left: 0; z-index: 20; background: white; }
-          .mobile-compact-table th, .mobile-compact-table td { padding: 8px 4px !important; }
-        }
+        /* 介面寬度控制 */
+        .col-name { width: 80px; }
+        .col-type { width: 80px; }
+        .col-plate { width: 100px; }
+        .col-stat { width: 60px; }
       `}</style>
 
       {/* 設定面板 */}
       {showSettings && (
         <div className="fixed inset-0 z-[100] flex justify-end">
-          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={() => setShowSettings(false)}></div>
-          <div className="relative w-[90%] max-w-md bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right duration-300 border-l border-slate-200">
-            <div className="p-4 border-b flex justify-between items-center bg-slate-800 text-white shrink-0">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowSettings(false)}></div>
+          <div className="relative w-[90%] max-w-md bg-white h-full shadow-2xl flex flex-col border-l border-slate-200">
+            <div className="p-4 border-b flex justify-between items-center bg-slate-800 text-white">
               <div className="flex items-center gap-2">
                 <Users size={20} />
                 <h2 className="text-lg font-bold">車隊成員管理</h2>
               </div>
-              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-700 rounded-full transition active:scale-90"><X size={24} /></button>
+              <button onClick={() => setShowSettings(false)} className="p-2 hover:bg-slate-700 rounded-full transition"><X size={24} /></button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 space-y-3 custom-scrollbar">
               {drivers.map(d => (
-                <div key={d.id} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 relative group transition hover:border-blue-300">
-                  <button onClick={() => removeDriver(d.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition"><Trash2 size={16} /></button>
+                <div key={d.id} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 relative group">
+                  <button onClick={() => removeDriver(d.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 transition"><Trash2 size={16} /></button>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="col-span-2"><label className="text-[10px] font-bold text-slate-400">司機姓名</label>
-                    <input type="text" value={d.name} onChange={(e) => updateDriver(d.id, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none transition" /></div>
+                    <input type="text" value={d.name} onChange={(e) => updateDriver(d.id, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div>
                     <div><label className="text-[10px] font-bold text-slate-400">車型</label>
-                    <input type="text" value={d.carType} onChange={(e) => updateDriver(d.id, 'carType', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                    <input type="text" value={d.carType} onChange={(e) => updateDriver(d.id, 'carType', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
                     <div><label className="text-[10px] font-bold text-slate-400">車號</label>
-                    <input type="text" value={d.carPlate} onChange={(e) => updateDriver(d.id, 'carPlate', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div>
+                    <input type="text" value={d.carPlate} onChange={(e) => updateDriver(d.id, 'carPlate', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="p-4 bg-white border-t border-slate-100 shrink-0">
-              <button onClick={addDriver} className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition shadow-lg active:scale-95"><UserPlus size={18} /> 新增人員</button>
+            <div className="p-4 bg-white border-t border-slate-100">
+              <button onClick={addDriver} className="w-full flex items-center justify-center gap-2 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold transition"><UserPlus size={18} /> 新增人員</button>
             </div>
           </div>
         </div>
       )}
 
       {/* 導覽列 */}
-      <header className="bg-slate-900 text-white p-3 sm:p-4 sticky top-0 z-40 shadow-xl no-print">
+      <header className="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-xl no-print">
         <div className="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-3 self-start sm:self-center">
+          <div className="flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-xl shadow-inner"><Truck className="text-white" size={24} /></div>
             <div>
-              <h1 className="text-xl sm:text-2xl font-black tracking-tighter">車隊排班管理系統</h1>
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Driver Scheduling Calendar</p>
+              <h1 className="text-xl font-black">車隊排班系統</h1>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Driver Scheduling</p>
             </div>
           </div>
-          <div className="flex w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0 gap-2 scrollbar-hide">
-            <button onClick={() => window.print()} className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 px-3 py-2 rounded-xl font-bold transition text-xs whitespace-nowrap active:scale-95"><Printer size={16}/>列印</button>
-            <button onClick={autoSchedule} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-3 py-2 rounded-xl font-bold transition text-xs whitespace-nowrap active:scale-95 shadow-lg shadow-emerald-900/20"><RefreshCw size={16} className={isAutoScheduling ? 'animate-spin' : ''}/>一鍵排班</button>
-            <button onClick={save} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-3 py-2 rounded-xl font-bold transition text-xs whitespace-nowrap active:scale-95 shadow-lg shadow-blue-900/20"><Save size={16}/>儲存</button>
-            <button onClick={() => setShowSettings(true)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700 active:scale-90"><Settings size={20}/></button>
+          <div className="flex gap-2">
+            <button onClick={() => window.print()} className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 px-4 py-2 rounded-xl font-bold transition text-sm active:scale-95"><Printer size={16}/>列印報表</button>
+            <button onClick={autoSchedule} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-xl font-bold transition text-sm active:scale-95"><RefreshCw size={16} className={isAutoScheduling ? 'animate-spin' : ''}/>自動排班</button>
+            <button onClick={save} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-50 px-4 py-2 rounded-xl font-bold transition text-sm text-white hover:text-blue-700 active:scale-95"><Save size={16}/>儲存資料</button>
+            <button onClick={() => setShowSettings(true)} className="p-2 bg-slate-800 hover:bg-slate-700 rounded-xl transition border border-slate-700"><Settings size={20}/></button>
           </div>
         </div>
       </header>
 
-      {/* 列印專用標題 */}
+      {/* 列印專用內容 */}
       <div className="print-title">{year} 年 {month + 1} 月 車隊排班表</div>
       <div className="print-legend">
-        <span>✕ 休假</span>
-        <span>◇ 機動</span>
-        <span>特 特休</span>
+        <span>✕：休假</span>
+        <span>◇：機動</span>
+        <span>特：特休</span>
       </div>
 
-      <main className="p-3 sm:p-6 max-w-screen-2xl mx-auto">
-        {/* 月份切換 */}
+      <main className="p-4 sm:p-6 max-w-screen-2xl mx-auto">
         <div className="flex items-center justify-between mb-6 no-print">
           <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
-            <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-50 rounded-xl transition active:scale-90"><ChevronDown className="rotate-90 text-slate-400" size={20}/></button>
-            <span className="text-lg font-black font-mono px-4 text-slate-800">{year} / {String(month + 1).padStart(2, '0')}</span>
-            <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-50 rounded-xl transition active:scale-90"><ChevronDown className="-rotate-90 text-slate-400" size={20}/></button>
+            <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-50 rounded-xl transition"><ChevronDown className="rotate-90 text-slate-400" size={20}/></button>
+            <span className="text-lg font-black font-mono px-4">{year} / {String(month + 1).padStart(2, '0')}</span>
+            <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-50 rounded-xl transition"><ChevronDown className="-rotate-90 text-slate-400" size={20}/></button>
           </div>
-          <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl border border-blue-100 hidden sm:block">
-            <span className="text-xs font-bold uppercase mr-2 opacity-60">應休天數</span>
-            <span className="text-xl font-black">{totalHolidaysInMonth}</span>
+          <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl border border-blue-100">
+            <span className="text-xs font-bold uppercase mr-2 opacity-60">應休基準</span>
+            <span className="text-xl font-black">{totalHolidaysInMonth} 天</span>
           </div>
         </div>
 
-        {/* 圖例 */}
-        <div className="flex flex-wrap items-center gap-3 sm:gap-6 mb-6 text-xs font-bold text-slate-500 bg-slate-200/40 p-3 rounded-2xl no-print">
-           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200"><span className="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></span> ✕ 休假</div>
-           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200"><span className="w-2.5 h-2.5 bg-blue-500 rounded-full"></span> ◇ 機動</div>
-           <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-lg shadow-sm border border-slate-200"><span className="w-2.5 h-2.5 bg-purple-500 rounded-full"></span> 特 特休</div>
-        </div>
-
-        {/* 主要表格區域 */}
-        <div className="bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden relative">
-          <div className="overflow-x-auto custom-scrollbar tablet-scroll">
-            <table className="w-full border-collapse mobile-compact-table">
+        <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto custom-scrollbar">
+            <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="p-3 sm:p-4 sticky left-0 bg-slate-50 z-30 border-r w-16 sm:w-24 text-left font-black text-slate-400 text-[10px] uppercase tracking-widest shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">姓名</th>
-                  <th className="p-3 sm:p-4 sticky left-16 sm:left-24 bg-slate-50 z-30 border-r w-16 sm:w-28 text-left font-black text-slate-400 text-[10px] uppercase tracking-widest shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)]">車型</th>
-                  <th className="p-3 sm:p-4 sticky left-32 sm:left-52 bg-slate-50 z-30 border-r w-24 sm:w-32 text-left font-black text-slate-400 text-[10px] uppercase tracking-widest shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] mobile-hide show-on-print">車號</th>
+                  <th className="col-name p-3 sticky left-0 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider">姓名</th>
+                  <th className="col-type p-3 sticky left-[80px] bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider no-print">車型</th>
+                  <th className="col-plate p-3 sticky left-[160px] bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider no-print">車號</th>
                   
+                  {/* 列印時顯示的緊湊欄位 */}
+                  <th className="hidden print:table-cell col-type p-2 font-black text-slate-500 text-[9px]">車型</th>
+                  <th className="hidden print:table-cell col-plate p-2 font-black text-slate-500 text-[9px]">車號</th>
+
                   {calendarDays.map(d => (
-                    <th key={d.date} className={`p-2 border-r text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
-                      <div className="text-[9px] font-black text-slate-300 uppercase mb-1 mobile-hide">{WEEKDAYS[d.dayOfWeek]}</div>
-                      <div className={`text-sm sm:text-base font-black ${d.isWeekend ? 'text-orange-600' : 'text-slate-700'}`}>{d.date}</div>
+                    <th key={d.date} className={`col-date p-1 border-r text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
+                      <div className="text-[8px] font-bold text-slate-300 mb-0.5">{WEEKDAYS[d.dayOfWeek]}</div>
+                      <div className={`text-xs font-black ${d.isWeekend ? 'text-orange-600' : 'text-slate-700'}`}>{d.date}</div>
                     </th>
                   ))}
-                  <th className="p-3 sm:p-4 bg-slate-100 w-12 sm:w-16 sticky right-0 z-30 border-l font-black text-center text-slate-400 text-[10px] shadow-[-4px_0_10px_-5px_rgba(0,0,0,0.1)]">排休</th>
+                  <th className="col-stat p-3 bg-slate-100 sticky right-0 z-30 border-l font-black text-center text-slate-400 text-[10px]">排休</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
                 {drivers.map(driver => {
                   let offCount = 0;
                   return (
-                    <tr key={driver.id} className="group hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3 sm:p-4 font-bold sticky left-0 bg-white group-hover:bg-slate-50 z-20 border-r shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] text-slate-700 whitespace-nowrap truncate">
+                    <tr key={driver.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="col-name p-3 font-bold sticky left-0 bg-white z-20 border-r text-slate-700 whitespace-nowrap overflow-hidden">
                         {driver.name.split('(')[0]}
                       </td>
-                      <td className="p-3 sm:p-4 text-slate-400 font-bold sticky left-16 sm:left-24 bg-white group-hover:bg-slate-50 z-20 border-r shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] text-[10px] sm:text-xs">
+                      <td className="col-type p-3 text-slate-400 font-bold sticky left-[80px] bg-white z-20 border-r text-[10px] no-print">
                         {driver.carType}
                       </td>
-                      <td className="p-3 sm:p-4 font-mono text-slate-300 sticky left-32 sm:left-52 bg-white group-hover:bg-slate-50 z-20 border-r shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] mobile-hide show-on-print text-[10px] sm:text-xs">
+                      <td className="col-plate p-3 font-mono text-slate-300 sticky left-[160px] bg-white z-20 border-r text-[10px] no-print">
                         {driver.carPlate}
                       </td>
+
+                      {/* 列印版顯示欄位 */}
+                      <td className="hidden print:table-cell col-type text-slate-500 text-[8px]">{driver.carType}</td>
+                      <td className="hidden print:table-cell col-plate text-slate-500 text-[8px]">{driver.carPlate}</td>
+
                       {calendarDays.map(day => {
                         const s = schedule[`${driver.id}_${day.fullDate}`];
                         if (s === STATUS.OFF || s === STATUS.SPECIAL) offCount++;
@@ -373,21 +377,17 @@ export default function App() {
                           <td 
                             key={day.date} 
                             onClick={() => handleCellClick(driver.id, day.fullDate)}
-                            className={`p-0 border-r text-center cursor-pointer select-none relative h-10 sm:h-14 transition-all
-                              ${day.isWeekend ? 'bg-orange-50/10' : ''}
-                              hover:bg-blue-50
-                            `}
+                            className={`col-date p-0 border-r text-center cursor-pointer select-none h-10 sm:h-12 ${day.isWeekend ? 'bg-orange-50/5' : ''} hover:bg-blue-50/50`}
                           >
                             <div className="flex items-center justify-center w-full h-full">
-                              {s === STATUS.OFF && <span className="text-red-500 font-black text-lg sm:text-xl">✕</span>}
-                              {s === STATUS.MOBILE && <span className="text-blue-500 font-black text-xl sm:text-2xl">◇</span>}
-                              {s === STATUS.SPECIAL && <span className="bg-purple-500 text-white text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md font-bold">特</span>}
+                              {s === STATUS.OFF && <span className="text-red-500 font-black text-base">✕</span>}
+                              {s === STATUS.MOBILE && <span className="text-blue-500 font-black text-lg">◇</span>}
+                              {s === STATUS.SPECIAL && <span className="bg-purple-500 text-white text-[9px] px-1 rounded font-bold">特</span>}
                             </div>
                           </td>
                         );
                       })}
-                      <td className={`p-3 sm:p-4 text-center font-black sticky right-0 z-20 shadow-[-4px_0_10px_-5px_rgba(0,0,0,0.1)] text-sm sm:text-base
-                        ${offCount < totalHolidaysInMonth ? 'text-red-500 bg-red-50/50' : 'text-emerald-600 bg-emerald-50/50'}`}>
+                      <td className={`col-stat p-3 text-center font-black sticky right-0 z-20 bg-white border-l text-sm ${offCount < totalHolidaysInMonth ? 'text-red-500' : 'text-emerald-600'}`}>
                         {offCount}
                       </td>
                     </tr>
@@ -396,11 +396,6 @@ export default function App() {
               </tbody>
             </table>
           </div>
-        </div>
-
-        {/* 底部提示 (Mobile Only) */}
-        <div className="mt-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest sm:hidden no-print">
-          ← 左右滑動查看日期內容 →
         </div>
       </main>
     </div>
