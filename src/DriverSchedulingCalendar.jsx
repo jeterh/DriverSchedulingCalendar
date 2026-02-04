@@ -218,13 +218,12 @@ export default function App() {
             table-layout: fixed !important;
             border-collapse: collapse !important;
             font-size: 7.5pt !important;
-            border: 1px solid #333 !important; /* 強制加上實心外邊框 */
+            border: 1px solid #333 !important;
             box-sizing: border-box !important;
           }
 
-          /* 確保所有格子都有細線 */
           th, td { 
-            border: 0.5pt solid #666 !important; /* 稍微加深顏色確保列印清晰 */
+            border: 0.5pt solid #666 !important;
             padding: 2px 0 !important;
             height: 22pt !important;
             text-align: center !important;
@@ -232,8 +231,8 @@ export default function App() {
 
           /* 寬度分配 */
           .col-name { width: 55pt !important; }
-          .col-type { width: 45pt !important; }
           .col-plate { width: 60pt !important; }
+          .col-type { width: 45pt !important; }
           .col-stat { width: 30pt !important; }
 
           .sticky { 
@@ -244,17 +243,34 @@ export default function App() {
           
           .text-red-500 { color: #cc0000 !important; }
           .text-blue-500 { color: #0000cc !important; }
-          
           .bg-orange-50 { background-color: #fff9f5 !important; }
         }
 
         .print-title, .print-legend { display: none; }
 
-        /* 介面寬度控制 */
-        .col-name { width: 80px; }
-        .col-type { width: 80px; }
-        .col-plate { width: 100px; }
-        .col-stat { width: 60px; }
+        /* 介面寬度與鎖定控制 */
+        .col-name { width: 80px; min-width: 80px; }
+        .col-plate { width: 100px; min-width: 100px; }
+        .col-type { width: 80px; min-width: 80px; }
+        .col-stat { width: 60px; min-width: 60px; }
+        .col-date { width: 40px; min-width: 40px; }
+
+        /* 網頁版鎖定邏輯 */
+        @media (min-width: 640px) {
+            .sticky-header { position: sticky; top: 0; z-index: 45; }
+            .sticky-left-1 { position: sticky; left: 0; z-index: 40; }
+            .sticky-left-2 { position: sticky; left: 80px; z-index: 40; }
+        }
+
+        /* 手機版本 RWD：上下滑動時鎖定標題與姓名車號，但左右滑動時車型不鎖定 */
+        @media (max-width: 639px) {
+            .sticky-header { position: sticky; top: 0; z-index: 45; }
+            /* 姓名鎖定 */
+            .sticky-left-1 { position: sticky; left: 0; z-index: 40; }
+            /* 車號鎖定 (緊鄰姓名) */
+            .sticky-left-2 { position: sticky; left: 80px; z-index: 40; }
+            /* 車型在此模式不設 sticky */
+        }
       `}</style>
 
       {/* 設定面板 */}
@@ -274,12 +290,18 @@ export default function App() {
                 <div key={d.id} className="p-4 border border-slate-200 rounded-2xl bg-slate-50 relative group">
                   <button onClick={() => removeDriver(d.id)} className="absolute top-3 right-3 p-1.5 text-slate-300 hover:text-red-500 transition"><Trash2 size={16} /></button>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="col-span-2"><label className="text-[10px] font-bold text-slate-400">司機姓名</label>
-                    <input type="text" value={d.name} onChange={(e) => updateDriver(d.id, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" /></div>
-                    <div><label className="text-[10px] font-bold text-slate-400">車型</label>
-                    <input type="text" value={d.carType} onChange={(e) => updateDriver(d.id, 'carType', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
-                    <div><label className="text-[10px] font-bold text-slate-400">車號</label>
-                    <input type="text" value={d.carPlate} onChange={(e) => updateDriver(d.id, 'carPlate', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" /></div>
+                    <div className="col-span-2">
+                      <label className="text-[10px] font-bold text-slate-400">司機姓名</label>
+                      <input type="text" value={d.name} onChange={(e) => updateDriver(d.id, 'name', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400">車號</label>
+                      <input type="text" value={d.carPlate} onChange={(e) => updateDriver(d.id, 'carPlate', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    </div>
+                    <div>
+                      <label className="text-[10px] font-bold text-slate-400">車型</label>
+                      <input type="text" value={d.carType} onChange={(e) => updateDriver(d.id, 'carType', e.target.value)} className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm" />
+                    </div>
                   </div>
                 </div>
               ))}
@@ -292,7 +314,7 @@ export default function App() {
       )}
 
       {/* 導覽列 */}
-      <header className="bg-slate-900 text-white p-4 sticky top-0 z-40 shadow-xl no-print">
+      <header className="bg-slate-900 text-white p-4 sticky top-0 z-50 shadow-xl no-print">
         <div className="max-w-screen-2xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center gap-3">
             <div className="bg-blue-600 p-2 rounded-xl shadow-inner"><Truck className="text-white" size={24} /></div>
@@ -310,7 +332,7 @@ export default function App() {
         </div>
       </header>
 
-      {/* 列印專用內容 */}
+      {/* 列印專用標題 */}
       <div className="print-title">{year} 年 {month + 1} 月 車隊排班表</div>
       <div className="print-legend">
         <span>✕：休假</span>
@@ -335,15 +357,15 @@ export default function App() {
           <div className="overflow-x-auto custom-scrollbar print:overflow-visible">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200">
-                  <th className="col-name p-3 sticky left-0 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider">姓名</th>
+                <tr className="bg-slate-50 border-b border-slate-200 sticky-header">
+                  {/* 姓名 - 始終鎖定 */}
+                  <th className="col-name p-3 sticky-left-1 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider shadow-[1px_0_0_0_#e2e8f0]">姓名</th>
                   
-                  {/* 列印用與網頁用欄位切換 */}
-                  <th className="hidden print:table-cell col-type p-2 font-black text-slate-500 text-[9px] border-r">車型</th>
-                  <th className="hidden print:table-cell col-plate p-2 font-black text-slate-500 text-[9px] border-r">車號</th>
+                  {/* 車號 - 始終鎖定 (與姓名互換位置) */}
+                  <th className="col-plate p-3 sticky-left-2 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider shadow-[1px_0_0_0_#e2e8f0]">車號</th>
                   
-                  <th className="col-type p-3 sticky left-[80px] bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider no-print">車型</th>
-                  <th className="col-plate p-3 sticky left-[160px] bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider no-print">車號</th>
+                  {/* 車型 - 手機版不鎖定 */}
+                  <th className="col-type p-3 bg-slate-50 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider">車型</th>
 
                   {calendarDays.map(d => (
                     <th key={d.date} className={`col-date p-1 border-r text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
@@ -351,7 +373,7 @@ export default function App() {
                       <div className={`text-xs font-black ${d.isWeekend ? 'text-orange-600' : 'text-slate-700'}`}>{d.date}</div>
                     </th>
                   ))}
-                  <th className="col-stat p-3 bg-slate-100 sticky right-0 z-30 border-l font-black text-center text-slate-400 text-[10px]">排休</th>
+                  <th className="col-stat p-3 bg-slate-100 border-l font-black text-center text-slate-400 text-[10px]">排休</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -359,19 +381,19 @@ export default function App() {
                   let offCount = 0;
                   return (
                     <tr key={driver.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="col-name p-3 font-bold sticky left-0 bg-white z-20 border-r text-slate-700 whitespace-nowrap overflow-hidden">
+                      {/* 姓名欄位 */}
+                      <td className="col-name p-3 font-bold sticky-left-1 bg-white z-20 border-r text-slate-700 whitespace-nowrap overflow-hidden shadow-[1px_0_0_0_#f1f5f9]">
                         {driver.name.split('(')[0]}
                       </td>
                       
-                      {/* 列印版顯示欄位 */}
-                      <td className="hidden print:table-cell col-type text-slate-500 text-[8px] border-r">{driver.carType}</td>
-                      <td className="hidden print:table-cell col-plate text-slate-500 text-[8px] border-r">{driver.carPlate}</td>
-
-                      <td className="col-type p-3 text-slate-400 font-bold sticky left-[80px] bg-white z-20 border-r text-[10px] no-print">
-                        {driver.carType}
-                      </td>
-                      <td className="col-plate p-3 font-mono text-slate-300 sticky left-[160px] bg-white z-20 border-r text-[10px] no-print">
+                      {/* 車號欄位 (互換) */}
+                      <td className="col-plate p-3 font-mono text-slate-400 sticky-left-2 bg-white z-20 border-r text-[10px] shadow-[1px_0_0_0_#f1f5f9]">
                         {driver.carPlate}
+                      </td>
+
+                      {/* 車型欄位 (互換 & 手機版不鎖定) */}
+                      <td className="col-type p-3 text-slate-400 font-bold bg-white border-r text-[10px]">
+                        {driver.carType}
                       </td>
 
                       {calendarDays.map(day => {
@@ -391,7 +413,7 @@ export default function App() {
                           </td>
                         );
                       })}
-                      <td className={`col-stat p-3 text-center font-black sticky right-0 z-20 bg-white border-l text-sm ${offCount < totalHolidaysInMonth ? 'text-red-500' : 'text-emerald-600'}`}>
+                      <td className={`col-stat p-3 text-center font-black bg-white border-l text-sm ${offCount < totalHolidaysInMonth ? 'text-red-500' : 'text-emerald-600'}`}>
                         {offCount}
                       </td>
                     </tr>
