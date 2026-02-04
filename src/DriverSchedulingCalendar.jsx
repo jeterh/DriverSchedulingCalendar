@@ -24,6 +24,16 @@ const INITIAL_DRIVERS = [
 const STATUS = { WORK: 'work', OFF: 'off', MOBILE: 'mobile', SPECIAL: 'special' };
 const STORAGE_KEY = 'shift_scheduler_data_v1';
 
+// 隨機打亂陣列的輔助函式
+const shuffleArray = (array) => {
+  const newArr = [...array];
+  for (let i = newArr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [newArr[i], newArr[j]] = [newArr[j], newArr[i]];
+  }
+  return newArr;
+};
+
 export default function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [drivers, setDrivers] = useState(INITIAL_DRIVERS);
@@ -31,7 +41,6 @@ export default function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [isAutoScheduling, setIsAutoScheduling] = useState(false);
 
-  // 初始化讀取 LocalStorage
   useEffect(() => {
     const savedData = localStorage.getItem(STORAGE_KEY);
     if (savedData) {
@@ -80,7 +89,7 @@ export default function App() {
   const autoSchedule = () => {
     setIsAutoScheduling(true);
     setTimeout(() => {
-      const newSchedule = { ...schedule };
+      const newSchedule = {}; 
       const driverState = drivers.map(d => ({
         id: d.id,
         type: d.type,
@@ -91,20 +100,21 @@ export default function App() {
       }));
 
       calendarDays.forEach(day => {
-        drivers.forEach(d => delete newSchedule[`${d.id}_${day.fullDate}`]);
         const targetOff = day.isWeekend ? 8 : 3;
         const targetMobile = day.isWeekend ? 0 : 1;
 
-        // 1. 決定誰必須休息
         const mustRestIds = driverState.filter(d => d.consecutiveWork >= 6).map(d => d.id);
         const cannotRestIds = driverState.filter(d => d.type === 'contractor' && !day.isWeekend).map(d => d.id);
 
         let selectedOff = [...mustRestIds];
         let candidates = driverState.filter(d => !mustRestIds.includes(d.id) && !cannotRestIds.includes(d.id));
+        candidates = shuffleArray(candidates);
         candidates.sort((a, b) => a.totalOff - b.totalOff);
         
         const needed = targetOff - selectedOff.length;
-        if (needed > 0) selectedOff = [...selectedOff, ...candidates.slice(0, needed).map(d => d.id)];
+        if (needed > 0) {
+          selectedOff = [...selectedOff, ...candidates.slice(0, Math.max(0, needed)).map(d => d.id)];
+        }
 
         selectedOff.forEach(id => {
           newSchedule[`${id}_${day.fullDate}`] = STATUS.OFF;
@@ -114,19 +124,20 @@ export default function App() {
           d.totalOff++;
         });
 
-        // 2. 決定誰當機動 (連 5 換人邏輯)
         const working = driverState.filter(d => !selectedOff.includes(d.id));
         let selectedMobileId = null;
 
         if (targetMobile > 0) {
-          // 排除已經連做 5 天機動的人
-          const mobileCandidates = working.filter(d => d.consecutiveMobile < 5);
+          let mobileCandidates = working.filter(d => d.consecutiveMobile < 5);
+          mobileCandidates = shuffleArray(mobileCandidates);
+
           mobileCandidates.sort((a, b) => {
-             // 優先讓預設是機動位的人擔任，次要看連值天數
-             if (a.defaultRole === 'mobile' && b.defaultRole !== 'mobile') return -1;
-             if (a.defaultRole !== 'mobile' && b.defaultRole === 'mobile') return 1;
+             const aWeight = a.defaultRole === 'mobile' ? 0 : 1;
+             const bWeight = b.defaultRole === 'mobile' ? 0 : 1;
+             if (aWeight !== bWeight) return aWeight - bWeight;
              return a.consecutiveMobile - b.consecutiveMobile;
           });
+          
           if (mobileCandidates.length > 0) selectedMobileId = mobileCandidates[0].id;
         }
 
@@ -153,7 +164,6 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      {/* Header */}
       <header className="bg-slate-800 text-white p-4 sticky top-0 z-30 shadow-lg">
         <div className="max-w-screen-2xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
@@ -163,10 +173,10 @@ export default function App() {
             <h1 className="text-2xl font-black tracking-tight">車隊排班系統</h1>
           </div>
           <div className="flex gap-2">
-            <button onClick={autoSchedule} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-bold transition">
-              <RefreshCw size={18} className={isAutoScheduling ? 'animate-spin' : ''} /> 一鍵排班
+            <button onClick={autoSchedule} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-bold transition shadow-md active:scale-95">
+              <RefreshCw size={18} className={isAutoScheduling ? 'animate-spin' : ''} /> 一鍵隨機排班
             </button>
-            <button onClick={save} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-bold transition">
+            <button onClick={save} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-bold transition shadow-md active:scale-95">
               <Save size={18} /> 儲存
             </button>
             <button onClick={() => setShowSettings(!showSettings)} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition">
@@ -177,49 +187,60 @@ export default function App() {
       </header>
 
       <main className="p-4 max-w-screen-2xl mx-auto">
-        {/* Month Selector */}
         <div className="flex items-center gap-4 mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 w-fit">
-          <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-full transition">
-            <ChevronDown className="rotate-90" />
+          <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-1 hover:bg-slate-100 rounded-full transition">
+            <ChevronDown className="rotate-90" size={20} />
           </button>
           <span className="text-xl font-bold font-mono">{year}年 {month + 1}月</span>
-          <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-full transition">
-            <ChevronDown className="-rotate-90" />
+          <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-1 hover:bg-slate-100 rounded-full transition">
+            <ChevronDown className="-rotate-90" size={20} />
           </button>
         </div>
 
-        {/* Legend */}
-        <div className="flex gap-4 mb-4 text-sm font-medium text-slate-600">
-           <div className="flex items-center gap-1"><span className="text-red-500 font-bold">✕</span> 休假</div>
-           <div className="flex items-center gap-1"><span className="text-blue-500 font-bold text-lg">◇</span> 機動</div>
-           <div className="flex items-center gap-1"><span className="text-purple-500 font-bold">特</span> 特休</div>
-           <div className="ml-auto">應休基準：<span className="text-blue-600 font-bold">{totalHolidaysInMonth}</span> 天</div>
+        <div className="flex flex-wrap gap-6 mb-4 text-sm font-medium text-slate-600 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+           <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 rounded-full"></span> ✕ 休假</div>
+           <div className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-500 rounded-full"></span> ◇ 機動</div>
+           <div className="flex items-center gap-2"><span className="w-3 h-3 bg-purple-500 rounded-full"></span> 特 特休</div>
+           <div className="ml-auto flex items-center gap-2">
+             應休基準：<span className="bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md font-bold text-base">{totalHolidaysInMonth}</span> 天
+           </div>
         </div>
 
-        {/* Table Container */}
         <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
               <thead>
-                <tr className="bg-slate-100 border-b border-slate-300">
-                  <th className="p-3 sticky left-0 bg-slate-100 z-20 border-r w-24">姓名</th>
-                  <th className="p-3 sticky left-24 bg-slate-100 z-20 border-r w-32 hidden md:table-cell">車號</th>
+                <tr className="bg-slate-100 border-b border-slate-300 text-xs sm:text-sm">
+                  {/* 固定欄位：姓名 */}
+                  <th className="p-3 sticky left-0 bg-slate-100 z-20 border-r w-20 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">姓名</th>
+                  {/* 固定欄位：車型 (新加入) */}
+                  <th className="p-3 sticky left-20 bg-slate-100 z-20 border-r w-24 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">車型</th>
+                  {/* 固定欄位：車號 */}
+                  <th className="p-3 sticky left-44 bg-slate-100 z-20 border-r w-28 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] hidden sm:table-cell">車號</th>
+                  
                   {calendarDays.map(d => (
-                    <th key={d.date} className={`p-2 border-r min-w-[40px] ${d.isWeekend ? 'bg-orange-50 text-orange-700' : ''}`}>
-                      <div className="text-xs">{WEEKDAYS[d.dayOfWeek]}</div>
+                    <th key={d.date} className={`p-2 border-r min-w-[44px] ${d.isWeekend ? 'bg-orange-50 text-orange-700' : ''}`}>
+                      <div className="text-[10px] uppercase opacity-60">{WEEKDAYS[d.dayOfWeek]}</div>
                       <div className="text-base font-bold">{d.date}</div>
                     </th>
                   ))}
-                  <th className="p-3 bg-slate-200 w-16">排休</th>
+                  <th className="p-3 bg-slate-200 w-16 sticky right-0 z-20 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)] text-center">排休</th>
                 </tr>
               </thead>
               <tbody>
                 {drivers.map(driver => {
                   let offCount = 0;
                   return (
-                    <tr key={driver.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
-                      <td className="p-3 font-bold sticky left-0 bg-white z-10 border-r">{driver.name.split('(')[0]}</td>
-                      <td className="p-3 text-xs font-mono text-slate-500 sticky left-24 bg-white z-10 border-r hidden md:table-cell">{driver.carPlate}</td>
+                    <tr key={driver.id} className="border-b border-slate-100 hover:bg-blue-50/30 transition-colors text-xs sm:text-sm">
+                      <td className="p-3 font-bold sticky left-0 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                        {driver.name.split('(')[0]}
+                      </td>
+                      <td className="p-3 text-slate-600 font-medium sticky left-20 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+                        {driver.carType}
+                      </td>
+                      <td className="p-3 font-mono text-slate-400 sticky left-44 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] hidden sm:table-cell">
+                        {driver.carPlate}
+                      </td>
                       {calendarDays.map(day => {
                         const s = schedule[`${driver.id}_${day.fullDate}`];
                         if (s === STATUS.OFF || s === STATUS.SPECIAL) offCount++;
@@ -227,15 +248,20 @@ export default function App() {
                           <td 
                             key={day.date} 
                             onClick={() => handleCellClick(driver.id, day.fullDate)}
-                            className={`p-2 border-r text-center cursor-pointer hover:bg-blue-50 transition-all ${day.isWeekend ? 'bg-orange-50/30' : ''}`}
+                            className={`p-2 border-r text-center cursor-pointer select-none transition-all
+                              ${day.isWeekend ? 'bg-orange-50/20' : ''}
+                            `}
                           >
-                            {s === STATUS.OFF && <span className="text-red-500 font-bold text-lg">✕</span>}
-                            {s === STATUS.MOBILE && <span className="text-blue-500 font-bold text-xl">◇</span>}
-                            {s === STATUS.SPECIAL && <span className="text-purple-500 font-bold">特</span>}
+                            <div className="flex items-center justify-center min-h-[24px]">
+                              {s === STATUS.OFF && <span className="text-red-500 font-bold text-xl leading-none">✕</span>}
+                              {s === STATUS.MOBILE && <span className="text-blue-500 font-bold text-2xl leading-none">◇</span>}
+                              {s === STATUS.SPECIAL && <span className="text-purple-500 font-bold text-lg leading-none">特</span>}
+                            </div>
                           </td>
                         );
                       })}
-                      <td className={`p-3 text-center font-bold ${offCount < totalHolidaysInMonth ? 'text-red-500' : 'text-emerald-600'}`}>
+                      <td className={`p-3 text-center font-bold sticky right-0 bg-white z-10 shadow-[-2px_0_5px_-2px_rgba(0,0,0,0.1)]
+                        ${offCount < totalHolidaysInMonth ? 'text-red-500 bg-red-50' : 'text-emerald-600 bg-emerald-50'}`}>
                         {offCount}
                       </td>
                     </tr>
