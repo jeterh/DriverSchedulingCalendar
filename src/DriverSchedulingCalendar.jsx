@@ -1,0 +1,251 @@
+import React, { useState, useMemo, useEffect } from 'react';
+import { Truck, Users, Settings, Save, RefreshCw, Trash2, ChevronDown, Calendar } from 'lucide-react';
+
+// --- 常數設定 ---
+const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
+const INITIAL_DRIVERS = [
+  { id: 1, name: '約聘1(葉)', type: 'contract', carType: 'CROSS', carPlate: 'RAM-3075', defaultRole: 'fixed' },
+  { id: 2, name: '約聘2(簡)', type: 'contract', carType: 'SIENTA', carPlate: 'RAM-3080', defaultRole: 'fixed' },
+  { id: 3, name: '約聘3(鄭)', type: 'contract', carType: 'RAV4', carPlate: 'RAM-3501', defaultRole: 'fixed' },
+  { id: 4, name: '約聘4(王)', type: 'contract', carType: 'RAV4', carPlate: 'RAM-3506', defaultRole: 'fixed' },
+  { id: 5, name: '約聘5(王)', type: 'contract', carType: 'RAV4', carPlate: 'RAM-3507', defaultRole: 'fixed' },
+  { id: 6, name: '約聘6(葉)', type: 'contract', carType: 'CROSS', carPlate: 'RAM-3510', defaultRole: 'fixed' },
+  { id: 7, name: '約聘7(黃)', type: 'contract', carType: '現代9座', carPlate: 'RAM-3523', defaultRole: 'fixed' },
+  { id: 8, name: '約聘8(王)', type: 'contract', carType: 'CROSS', carPlate: 'RAM-3553', defaultRole: 'fixed' },
+  { id: 9, name: '約聘9(黃)', type: 'contract', carType: 'SIENTA', carPlate: 'RAM-3576', defaultRole: 'fixed' },
+  { id: 10, name: '約聘10(范)', type: 'contract', carType: '現代9座', carPlate: 'RAM-3582', defaultRole: 'fixed' },
+  { id: 11, name: '承攬1(裴)', type: 'contractor', carType: 'RAV4', carPlate: 'RAM-3520', defaultRole: 'fixed' },
+  { id: 12, name: '承攬2(林)', type: 'contractor', carType: 'CROSS', carPlate: 'RAM-3571', defaultRole: 'fixed' },
+  { id: 13, name: '承攬3(陳)', type: 'contractor', carType: 'CROSS', carPlate: 'RAM-3572', defaultRole: 'mobile' },
+  { id: 14, name: '承攬4(高)', type: 'contractor', carType: 'CROSS', carPlate: 'RAM-3575', defaultRole: 'mobile' },
+  { id: 15, name: '承攬5(謝)', type: 'contractor', carType: 'CROSS', carPlate: 'RAM-3573', defaultRole: 'mobile' },
+];
+
+const STATUS = { WORK: 'work', OFF: 'off', MOBILE: 'mobile', SPECIAL: 'special' };
+const STORAGE_KEY = 'shift_scheduler_data_v1';
+
+export default function App() {
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [drivers, setDrivers] = useState(INITIAL_DRIVERS);
+  const [schedule, setSchedule] = useState({});
+  const [showSettings, setShowSettings] = useState(false);
+  const [isAutoScheduling, setIsAutoScheduling] = useState(false);
+
+  // 初始化讀取 LocalStorage
+  useEffect(() => {
+    const savedData = localStorage.getItem(STORAGE_KEY);
+    if (savedData) {
+      const parsed = JSON.parse(savedData);
+      if (parsed.drivers) setDrivers(parsed.drivers);
+      if (parsed.schedule) setSchedule(parsed.schedule);
+    }
+  }, []);
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+  const calendarDays = useMemo(() => {
+    const days = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      const date = new Date(year, month, i);
+      days.push({
+        date: i,
+        dayOfWeek: date.getDay(),
+        isWeekend: date.getDay() === 0 || date.getDay() === 6,
+        fullDate: `${year}-${month + 1}-${i}`
+      });
+    }
+    return days;
+  }, [year, month, daysInMonth]);
+
+  const totalHolidaysInMonth = calendarDays.filter(d => d.isWeekend).length;
+
+  const handleCellClick = (driverId, fullDate) => {
+    const key = `${driverId}_${fullDate}`;
+    const current = schedule[key] || STATUS.WORK;
+    let next = STATUS.OFF;
+    if (current === STATUS.OFF) next = STATUS.MOBILE;
+    else if (current === STATUS.MOBILE) next = STATUS.SPECIAL;
+    else if (current === STATUS.SPECIAL) next = STATUS.WORK;
+
+    setSchedule(prev => {
+      const updated = { ...prev };
+      if (next === STATUS.WORK) delete updated[key];
+      else updated[key] = next;
+      return updated;
+    });
+  };
+
+  const autoSchedule = () => {
+    setIsAutoScheduling(true);
+    setTimeout(() => {
+      const newSchedule = { ...schedule };
+      const driverState = drivers.map(d => ({
+        id: d.id,
+        type: d.type,
+        defaultRole: d.defaultRole,
+        consecutiveWork: 0,
+        consecutiveMobile: 0,
+        totalOff: 0
+      }));
+
+      calendarDays.forEach(day => {
+        drivers.forEach(d => delete newSchedule[`${d.id}_${day.fullDate}`]);
+        const targetOff = day.isWeekend ? 8 : 3;
+        const targetMobile = day.isWeekend ? 0 : 1;
+
+        // 1. 決定誰必須休息
+        const mustRestIds = driverState.filter(d => d.consecutiveWork >= 6).map(d => d.id);
+        const cannotRestIds = driverState.filter(d => d.type === 'contractor' && !day.isWeekend).map(d => d.id);
+
+        let selectedOff = [...mustRestIds];
+        let candidates = driverState.filter(d => !mustRestIds.includes(d.id) && !cannotRestIds.includes(d.id));
+        candidates.sort((a, b) => a.totalOff - b.totalOff);
+        
+        const needed = targetOff - selectedOff.length;
+        if (needed > 0) selectedOff = [...selectedOff, ...candidates.slice(0, needed).map(d => d.id)];
+
+        selectedOff.forEach(id => {
+          newSchedule[`${id}_${day.fullDate}`] = STATUS.OFF;
+          const d = driverState.find(x => x.id === id);
+          d.consecutiveWork = 0;
+          d.consecutiveMobile = 0;
+          d.totalOff++;
+        });
+
+        // 2. 決定誰當機動 (連 5 換人邏輯)
+        const working = driverState.filter(d => !selectedOff.includes(d.id));
+        let selectedMobileId = null;
+
+        if (targetMobile > 0) {
+          // 排除已經連做 5 天機動的人
+          const mobileCandidates = working.filter(d => d.consecutiveMobile < 5);
+          mobileCandidates.sort((a, b) => {
+             // 優先讓預設是機動位的人擔任，次要看連值天數
+             if (a.defaultRole === 'mobile' && b.defaultRole !== 'mobile') return -1;
+             if (a.defaultRole !== 'mobile' && b.defaultRole === 'mobile') return 1;
+             return a.consecutiveMobile - b.consecutiveMobile;
+          });
+          if (mobileCandidates.length > 0) selectedMobileId = mobileCandidates[0].id;
+        }
+
+        working.forEach(d => {
+          if (d.id === selectedMobileId) {
+            newSchedule[`${d.id}_${day.fullDate}`] = STATUS.MOBILE;
+            d.consecutiveMobile++;
+          } else {
+            d.consecutiveMobile = 0;
+          }
+          d.consecutiveWork++;
+        });
+      });
+
+      setSchedule(newSchedule);
+      setIsAutoScheduling(false);
+    }, 400);
+  };
+
+  const save = () => {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ drivers, schedule }));
+    alert('儲存成功！');
+  };
+
+  return (
+    <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
+      {/* Header */}
+      <header className="bg-slate-800 text-white p-4 sticky top-0 z-30 shadow-lg">
+        <div className="max-w-screen-2xl mx-auto flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="bg-yellow-500 p-2 rounded-lg">
+              <Truck className="text-slate-900" size={24} />
+            </div>
+            <h1 className="text-2xl font-black tracking-tight">車隊排班系統</h1>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={autoSchedule} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-bold transition">
+              <RefreshCw size={18} className={isAutoScheduling ? 'animate-spin' : ''} /> 一鍵排班
+            </button>
+            <button onClick={save} className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 px-4 py-2 rounded-lg font-bold transition">
+              <Save size={18} /> 儲存
+            </button>
+            <button onClick={() => setShowSettings(!showSettings)} className="p-2 bg-slate-700 hover:bg-slate-600 rounded-lg transition">
+              <Settings size={20} />
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <main className="p-4 max-w-screen-2xl mx-auto">
+        {/* Month Selector */}
+        <div className="flex items-center gap-4 mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 w-fit">
+          <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-100 rounded-full transition">
+            <ChevronDown className="rotate-90" />
+          </button>
+          <span className="text-xl font-bold font-mono">{year}年 {month + 1}月</span>
+          <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-100 rounded-full transition">
+            <ChevronDown className="-rotate-90" />
+          </button>
+        </div>
+
+        {/* Legend */}
+        <div className="flex gap-4 mb-4 text-sm font-medium text-slate-600">
+           <div className="flex items-center gap-1"><span className="text-red-500 font-bold">✕</span> 休假</div>
+           <div className="flex items-center gap-1"><span className="text-blue-500 font-bold text-lg">◇</span> 機動</div>
+           <div className="flex items-center gap-1"><span className="text-purple-500 font-bold">特</span> 特休</div>
+           <div className="ml-auto">應休基準：<span className="text-blue-600 font-bold">{totalHolidaysInMonth}</span> 天</div>
+        </div>
+
+        {/* Table Container */}
+        <div className="bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="bg-slate-100 border-b border-slate-300">
+                  <th className="p-3 sticky left-0 bg-slate-100 z-20 border-r w-24">姓名</th>
+                  <th className="p-3 sticky left-24 bg-slate-100 z-20 border-r w-32 hidden md:table-cell">車號</th>
+                  {calendarDays.map(d => (
+                    <th key={d.date} className={`p-2 border-r min-w-[40px] ${d.isWeekend ? 'bg-orange-50 text-orange-700' : ''}`}>
+                      <div className="text-xs">{WEEKDAYS[d.dayOfWeek]}</div>
+                      <div className="text-base font-bold">{d.date}</div>
+                    </th>
+                  ))}
+                  <th className="p-3 bg-slate-200 w-16">排休</th>
+                </tr>
+              </thead>
+              <tbody>
+                {drivers.map(driver => {
+                  let offCount = 0;
+                  return (
+                    <tr key={driver.id} className="border-b border-slate-100 hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-bold sticky left-0 bg-white z-10 border-r">{driver.name.split('(')[0]}</td>
+                      <td className="p-3 text-xs font-mono text-slate-500 sticky left-24 bg-white z-10 border-r hidden md:table-cell">{driver.carPlate}</td>
+                      {calendarDays.map(day => {
+                        const s = schedule[`${driver.id}_${day.fullDate}`];
+                        if (s === STATUS.OFF || s === STATUS.SPECIAL) offCount++;
+                        return (
+                          <td 
+                            key={day.date} 
+                            onClick={() => handleCellClick(driver.id, day.fullDate)}
+                            className={`p-2 border-r text-center cursor-pointer hover:bg-blue-50 transition-all ${day.isWeekend ? 'bg-orange-50/30' : ''}`}
+                          >
+                            {s === STATUS.OFF && <span className="text-red-500 font-bold text-lg">✕</span>}
+                            {s === STATUS.MOBILE && <span className="text-blue-500 font-bold text-xl">◇</span>}
+                            {s === STATUS.SPECIAL && <span className="text-purple-500 font-bold">特</span>}
+                          </td>
+                        );
+                      })}
+                      <td className={`p-3 text-center font-bold ${offCount < totalHolidaysInMonth ? 'text-red-500' : 'text-emerald-600'}`}>
+                        {offCount}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
