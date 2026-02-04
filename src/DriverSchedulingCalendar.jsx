@@ -168,15 +168,75 @@ export default function App() {
         .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
         
-        /* 列印與響應式隱藏 */
+        /* 列印優化系統 */
         @media print {
+          @page {
+            size: A4 landscape;
+            margin: 0.5cm;
+          }
+          
           header, .no-print { display: none !important; }
-          body { background: white; }
-          .max-w-screen-2xl { max-width: 100% !important; margin: 0 !important; }
-          table { font-size: 8pt !important; border: 1px solid #000; }
-          .sticky { position: static !important; }
+          
+          body { 
+            background: white !important; 
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+
+          main {
+            padding: 0 !important;
+            margin: 0 !important;
+            max-width: 100% !important;
+          }
+
+          .print-title {
+            display: block !important;
+            text-align: center;
+            font-size: 16pt;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+
+          /* 表格強制調整 */
+          .bg-white { border: none !important; box-shadow: none !important; }
+          .overflow-x-auto { overflow: visible !important; }
+          
+          table { 
+            width: 100% !important; 
+            table-layout: fixed !important;
+            border-collapse: collapse !important;
+            font-size: 7.5pt !important; /* 極細化字體以符合寬度 */
+          }
+
+          th, td { 
+            border: 0.5pt solid #ccc !important; 
+            padding: 2px 1px !important;
+            height: auto !important;
+          }
+
+          /* 固定欄位在列印時取消固定，避免遮蓋 */
+          .sticky { 
+            position: static !important; 
+            background: white !important;
+            box-shadow: none !important;
+          }
+
+          /* 顯示特定列印內容 */
           .show-on-print { display: table-cell !important; }
+          .mobile-hide { display: table-cell !important; }
+
+          /* 圖例縮小放在標題下方 */
+          .print-legend {
+            display: flex !important;
+            justify-content: center;
+            gap: 15px;
+            font-size: 8pt;
+            margin-bottom: 10px;
+          }
         }
+
+        /* 介面隱藏列印專用內容 */
+        .print-title, .print-legend { display: none; }
 
         /* 針對 iPad / Tablet 的特殊微調 */
         @media (min-width: 768px) and (max-width: 1024px) {
@@ -244,6 +304,14 @@ export default function App() {
         </div>
       </header>
 
+      {/* 列印專用標題 */}
+      <div className="print-title">{year} 年 {month + 1} 月 車隊排班表</div>
+      <div className="print-legend">
+        <span>✕ 休假</span>
+        <span>◇ 機動</span>
+        <span>特 特休</span>
+      </div>
+
       <main className="p-3 sm:p-6 max-w-screen-2xl mx-auto">
         {/* 月份切換 */}
         <div className="flex items-center justify-between mb-6 no-print">
@@ -276,7 +344,7 @@ export default function App() {
                   <th className="p-3 sm:p-4 sticky left-32 sm:left-52 bg-slate-50 z-30 border-r w-24 sm:w-32 text-left font-black text-slate-400 text-[10px] uppercase tracking-widest shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] mobile-hide show-on-print">車號</th>
                   
                   {calendarDays.map(d => (
-                    <th key={d.date} className={`p-2 border-r min-w-[40px] sm:min-w-[50px] text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
+                    <th key={d.date} className={`p-2 border-r text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
                       <div className="text-[9px] font-black text-slate-300 uppercase mb-1 mobile-hide">{WEEKDAYS[d.dayOfWeek]}</div>
                       <div className={`text-sm sm:text-base font-black ${d.isWeekend ? 'text-orange-600' : 'text-slate-700'}`}>{d.date}</div>
                     </th>
@@ -289,7 +357,7 @@ export default function App() {
                   let offCount = 0;
                   return (
                     <tr key={driver.id} className="group hover:bg-slate-50/80 transition-colors">
-                      <td className="p-3 sm:p-4 font-bold sticky left-0 bg-white group-hover:bg-slate-50 z-20 border-r shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] text-slate-700 whitespace-nowrap truncate max-w-[64px] sm:max-w-none">
+                      <td className="p-3 sm:p-4 font-bold sticky left-0 bg-white group-hover:bg-slate-50 z-20 border-r shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] text-slate-700 whitespace-nowrap truncate">
                         {driver.name.split('(')[0]}
                       </td>
                       <td className="p-3 sm:p-4 text-slate-400 font-bold sticky left-16 sm:left-24 bg-white group-hover:bg-slate-50 z-20 border-r shadow-[4px_0_10px_-5px_rgba(0,0,0,0.1)] text-[10px] sm:text-xs">
@@ -307,13 +375,13 @@ export default function App() {
                             onClick={() => handleCellClick(driver.id, day.fullDate)}
                             className={`p-0 border-r text-center cursor-pointer select-none relative h-10 sm:h-14 transition-all
                               ${day.isWeekend ? 'bg-orange-50/10' : ''}
-                              hover:bg-blue-50 hover:z-10
+                              hover:bg-blue-50
                             `}
                           >
                             <div className="flex items-center justify-center w-full h-full">
-                              {s === STATUS.OFF && <span className="text-red-500 font-black text-lg sm:text-xl drop-shadow-sm">✕</span>}
+                              {s === STATUS.OFF && <span className="text-red-500 font-black text-lg sm:text-xl">✕</span>}
                               {s === STATUS.MOBILE && <span className="text-blue-500 font-black text-xl sm:text-2xl">◇</span>}
-                              {s === STATUS.SPECIAL && <span className="bg-purple-500 text-white text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md font-bold shadow-sm">特</span>}
+                              {s === STATUS.SPECIAL && <span className="bg-purple-500 text-white text-[10px] sm:text-xs px-1.5 py-0.5 rounded-md font-bold">特</span>}
                             </div>
                           </td>
                         );
@@ -331,7 +399,7 @@ export default function App() {
         </div>
 
         {/* 底部提示 (Mobile Only) */}
-        <div className="mt-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest sm:hidden">
+        <div className="mt-4 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest sm:hidden no-print">
           ← 左右滑動查看日期內容 →
         </div>
       </main>
