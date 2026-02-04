@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { Truck, Users, Settings, Save, RefreshCw, Trash2, ChevronDown, Calendar } from 'lucide-react';
+import { Truck, Users, Settings, Save, RefreshCw, Trash2, ChevronDown, Calendar, Printer } from 'lucide-react';
 
 // --- 常數設定 ---
 const WEEKDAYS = ['日', '一', '二', '三', '四', '五', '六'];
@@ -162,9 +162,70 @@ export default function App() {
     alert('儲存成功！');
   };
 
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 font-sans">
-      <header className="bg-slate-800 text-white p-4 sticky top-0 z-30 shadow-lg">
+      {/* 列印專用樣式 */}
+      <style>{`
+        @media print {
+          header, button, .no-print {
+            display: none !important;
+          }
+          body {
+            background-color: white !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .max-w-screen-2xl {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+          }
+          .shadow-xl, .shadow-sm, .shadow-lg {
+            box-shadow: none !important;
+          }
+          .rounded-2xl, .rounded-xl {
+            border-radius: 0 !important;
+          }
+          table {
+            border: 1px solid #333 !important;
+            font-size: 10px !important;
+          }
+          th, td {
+            border: 1px solid #ddd !important;
+            padding: 4px 2px !important;
+          }
+          .sticky {
+            position: static !important;
+          }
+          .bg-orange-50 {
+            background-color: #fffaf0 !important;
+            -webkit-print-color-adjust: exact;
+          }
+          .hidden-print {
+            display: none !important;
+          }
+          .show-on-print {
+            display: table-cell !important;
+          }
+          .print-title {
+            display: block !important;
+            text-align: center;
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+          }
+        }
+        @media screen {
+          .print-title { display: none; }
+        }
+      `}</style>
+
+      <header className="bg-slate-800 text-white p-4 sticky top-0 z-30 shadow-lg no-print">
         <div className="max-w-screen-2xl mx-auto flex justify-between items-center">
           <div className="flex items-center gap-3">
             <div className="bg-yellow-500 p-2 rounded-lg">
@@ -173,6 +234,9 @@ export default function App() {
             <h1 className="text-2xl font-black tracking-tight">車隊排班系統</h1>
           </div>
           <div className="flex gap-2">
+            <button onClick={handlePrint} className="flex items-center gap-2 bg-slate-600 hover:bg-slate-500 px-4 py-2 rounded-lg font-bold transition shadow-md active:scale-95">
+              <Printer size={18} /> 列印報表
+            </button>
             <button onClick={autoSchedule} className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 px-4 py-2 rounded-lg font-bold transition shadow-md active:scale-95">
               <RefreshCw size={18} className={isAutoScheduling ? 'animate-spin' : ''} /> 一鍵隨機排班
             </button>
@@ -187,7 +251,10 @@ export default function App() {
       </header>
 
       <main className="p-4 max-w-screen-2xl mx-auto">
-        <div className="flex items-center gap-4 mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 w-fit">
+        {/* 列印標題 */}
+        <div className="print-title">{year}年 {month + 1}月 車隊排班表</div>
+
+        <div className="flex items-center gap-4 mb-6 bg-white p-3 rounded-xl shadow-sm border border-slate-200 w-fit no-print">
           <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-1 hover:bg-slate-100 rounded-full transition">
             <ChevronDown className="rotate-90" size={20} />
           </button>
@@ -197,7 +264,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="flex flex-wrap gap-6 mb-4 text-sm font-medium text-slate-600 bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+        <div className="flex flex-wrap gap-6 mb-4 text-sm font-medium text-slate-600 bg-white p-4 rounded-xl border border-slate-200 shadow-sm no-print">
            <div className="flex items-center gap-2"><span className="w-3 h-3 bg-red-500 rounded-full"></span> ✕ 休假</div>
            <div className="flex items-center gap-2"><span className="w-3 h-3 bg-blue-500 rounded-full"></span> ◇ 機動</div>
            <div className="flex items-center gap-2"><span className="w-3 h-3 bg-purple-500 rounded-full"></span> 特 特休</div>
@@ -211,16 +278,14 @@ export default function App() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-100 border-b border-slate-300 text-xs sm:text-sm">
-                  {/* 固定欄位：姓名 */}
                   <th className="p-3 sticky left-0 bg-slate-100 z-20 border-r w-20 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">姓名</th>
-                  {/* 固定欄位：車型 (新加入) */}
                   <th className="p-3 sticky left-20 bg-slate-100 z-20 border-r w-24 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">車型</th>
-                  {/* 固定欄位：車號 */}
-                  <th className="p-3 sticky left-44 bg-slate-100 z-20 border-r w-28 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] hidden sm:table-cell">車號</th>
+                  {/* 在列印時強制顯示車號 */}
+                  <th className="p-3 sticky left-44 bg-slate-100 z-20 border-r w-28 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] hidden sm:table-cell show-on-print">車號</th>
                   
                   {calendarDays.map(d => (
-                    <th key={d.date} className={`p-2 border-r min-w-[44px] ${d.isWeekend ? 'bg-orange-50 text-orange-700' : ''}`}>
-                      <div className="text-[10px] uppercase opacity-60">{WEEKDAYS[d.dayOfWeek]}</div>
+                    <th key={d.date} className={`p-2 border-r min-w-[40px] ${d.isWeekend ? 'bg-orange-50 text-orange-700' : ''}`}>
+                      <div className="text-[10px] uppercase opacity-60 no-print">{WEEKDAYS[d.dayOfWeek]}</div>
                       <div className="text-base font-bold">{d.date}</div>
                     </th>
                   ))}
@@ -238,7 +303,7 @@ export default function App() {
                       <td className="p-3 text-slate-600 font-medium sticky left-20 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                         {driver.carType}
                       </td>
-                      <td className="p-3 font-mono text-slate-400 sticky left-44 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] hidden sm:table-cell">
+                      <td className="p-3 font-mono text-slate-400 sticky left-44 bg-white z-10 border-r shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)] hidden sm:table-cell show-on-print">
                         {driver.carPlate}
                       </td>
                       {calendarDays.map(day => {
@@ -255,7 +320,7 @@ export default function App() {
                             <div className="flex items-center justify-center min-h-[24px]">
                               {s === STATUS.OFF && <span className="text-red-500 font-bold text-xl leading-none">✕</span>}
                               {s === STATUS.MOBILE && <span className="text-blue-500 font-bold text-2xl leading-none">◇</span>}
-                              {s === STATUS.SPECIAL && <span className="text-purple-500 font-bold text-lg leading-none">特</span>}
+                              {s === STATUS.SPECIAL && <span className="text-purple-500 font-bold text-lg leading-none font-mono">特</span>}
                             </div>
                           </td>
                         );
