@@ -170,77 +170,21 @@ export default function App() {
         
         /* 強化列印樣式：補足外邊框 */
         @media print {
-          @page {
-            size: A4 landscape;
-            margin: 1cm 0.6cm;
-          }
-          
+          @page { size: A4 landscape; margin: 1cm 0.6cm; }
           header, .no-print { display: none !important; }
-          
-          body { 
-            background: white !important; 
-            margin: 0 !important;
-            padding: 0 !important;
-            -webkit-print-color-adjust: exact !important;
-            print-color-adjust: exact !important;
-          }
-
-          main { 
-            padding: 0 !important; 
-            margin: 0 !important;
-            max-width: 100% !important; 
-          }
-
-          .print-title {
-            display: block !important;
-            text-align: center;
-            font-size: 18pt;
-            font-weight: bold;
-            margin-bottom: 5px;
-            color: black;
-          }
-
-          .print-legend {
-            display: flex !important;
-            justify-content: center;
-            gap: 20px;
-            font-size: 9pt;
-            margin-bottom: 10px;
-            color: #333;
-          }
-
+          body { background: white !important; margin: 0 !important; padding: 0 !important; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+          main { padding: 0 !important; margin: 0 !important; max-width: 100% !important; }
+          .print-title { display: block !important; text-align: center; font-size: 18pt; font-weight: bold; margin-bottom: 5px; color: black; }
+          .print-legend { display: flex !important; justify-content: center; gap: 20px; font-size: 9pt; margin-bottom: 10px; color: #333; }
           .bg-white { border: none !important; box-shadow: none !important; }
           .overflow-x-auto { overflow: visible !important; }
-          
-          /* 表格最外層強化邊框 */
-          table { 
-            width: 100% !important; 
-            table-layout: fixed !important;
-            border-collapse: collapse !important;
-            font-size: 7.5pt !important;
-            border: 1px solid #333 !important;
-            box-sizing: border-box !important;
-          }
-
-          th, td { 
-            border: 0.5pt solid #666 !important;
-            padding: 2px 0 !important;
-            height: 22pt !important;
-            text-align: center !important;
-          }
-
-          /* 寬度分配 */
+          table { width: 100% !important; table-layout: fixed !important; border-collapse: collapse !important; font-size: 7.5pt !important; border: 1px solid #333 !important; box-sizing: border-box !important; }
+          th, td { border: 0.5pt solid #666 !important; padding: 2px 0 !important; height: 22pt !important; text-align: center !important; }
           .col-name { width: 55pt !important; }
           .col-plate { width: 60pt !important; }
           .col-type { width: 45pt !important; }
           .col-stat { width: 30pt !important; }
-
-          .sticky { 
-            position: static !important; 
-            background: transparent !important;
-            box-shadow: none !important;
-          }
-          
+          .sticky { position: static !important; background: transparent !important; box-shadow: none !important; }
           .text-red-500 { color: #cc0000 !important; }
           .text-blue-500 { color: #0000cc !important; }
           .bg-orange-50 { background-color: #fff9f5 !important; }
@@ -255,21 +199,14 @@ export default function App() {
         .col-stat { width: 60px; min-width: 60px; }
         .col-date { width: 40px; min-width: 40px; }
 
-        /* 網頁版鎖定邏輯 */
-        @media (min-width: 640px) {
-            .sticky-header { position: sticky; top: 0; z-index: 45; }
-            .sticky-left-1 { position: sticky; left: 0; z-index: 40; }
-            .sticky-left-2 { position: sticky; left: 80px; z-index: 40; }
-        }
+        /* 網頁版及手機版鎖定邏輯 */
+        .sticky-header { position: sticky; top: 0; z-index: 45; }
+        .sticky-left-1 { position: sticky; left: 0; z-index: 40; }
+        .sticky-left-2 { position: sticky; left: 80px; z-index: 40; }
 
-        /* 手機版本 RWD：上下滑動時鎖定標題與姓名車號，但左右滑動時車型不鎖定 */
         @media (max-width: 639px) {
-            .sticky-header { position: sticky; top: 0; z-index: 45; }
-            /* 姓名鎖定 */
-            .sticky-left-1 { position: sticky; left: 0; z-index: 40; }
-            /* 車號鎖定 (緊鄰姓名) */
-            .sticky-left-2 { position: sticky; left: 80px; z-index: 40; }
-            /* 車型在此模式不設 sticky */
+            /* 手機版：車型不再設 sticky，會隨頁面左移捲動 */
+            .col-type-cell { position: static !important; }
         }
       `}</style>
 
@@ -341,13 +278,34 @@ export default function App() {
       </div>
 
       <main className="p-4 sm:p-6 max-w-screen-2xl mx-auto">
-        <div className="flex items-center justify-between mb-6 no-print">
-          <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
-            <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-50 rounded-xl transition"><ChevronDown className="rotate-90 text-slate-400" size={20}/></button>
-            <span className="text-lg font-black font-mono px-4">{year} / {String(month + 1).padStart(2, '0')}</span>
-            <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-50 rounded-xl transition"><ChevronDown className="-rotate-90 text-slate-400" size={20}/></button>
+        {/* 控制列：包含月份選擇與狀態說明 */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-4 no-print">
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* 月份選擇 */}
+            <div className="flex items-center gap-2 bg-white p-1.5 rounded-2xl shadow-sm border border-slate-200">
+              <button onClick={() => setCurrentDate(new Date(year, month - 1))} className="p-2 hover:bg-slate-50 rounded-xl transition"><ChevronDown className="rotate-90 text-slate-400" size={20}/></button>
+              <span className="text-lg font-black font-mono px-4">{year} / {String(month + 1).padStart(2, '0')}</span>
+              <button onClick={() => setCurrentDate(new Date(year, month + 1))} className="p-2 hover:bg-slate-50 rounded-xl transition"><ChevronDown className="-rotate-90 text-slate-400" size={20}/></button>
+            </div>
+
+            {/* 視覺化狀態說明 (Legend) - 補回位置 */}
+            <div className="flex items-center gap-3 bg-white p-2 px-4 rounded-2xl border border-slate-200 shadow-sm text-xs font-bold">
+              <div className="flex items-center gap-1.5 border-r border-slate-100 pr-3">
+                <span className="text-red-500 text-base">✕</span>
+                <span className="text-slate-500">休假</span>
+              </div>
+              <div className="flex items-center gap-1.5 border-r border-slate-100 pr-3">
+                <span className="text-blue-500 text-lg">◇</span>
+                <span className="text-slate-500">機動</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-purple-500">特</span>
+                <span className="text-slate-500">特休</span>
+              </div>
+            </div>
           </div>
-          <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl border border-blue-100">
+
+          <div className="bg-blue-50 text-blue-700 px-4 py-2 rounded-2xl border border-blue-100 self-start md:self-center">
             <span className="text-xs font-bold uppercase mr-2 opacity-60">應休基準</span>
             <span className="text-xl font-black">{totalHolidaysInMonth} 天</span>
           </div>
@@ -358,14 +316,14 @@ export default function App() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-slate-50 border-b border-slate-200 sticky-header">
-                  {/* 姓名 - 始終鎖定 */}
+                  {/* 姓名 - 鎖定 */}
                   <th className="col-name p-3 sticky-left-1 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider shadow-[1px_0_0_0_#e2e8f0]">姓名</th>
                   
-                  {/* 車號 - 始終鎖定 (與姓名互換位置) */}
+                  {/* 車號 - 鎖定 */}
                   <th className="col-plate p-3 sticky-left-2 bg-slate-50 z-30 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider shadow-[1px_0_0_0_#e2e8f0]">車號</th>
                   
                   {/* 車型 - 手機版不鎖定 */}
-                  <th className="col-type p-3 bg-slate-50 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider">車型</th>
+                  <th className="col-type p-3 bg-slate-50 border-r text-left font-black text-slate-400 text-[10px] uppercase tracking-wider col-type-cell">車型</th>
 
                   {calendarDays.map(d => (
                     <th key={d.date} className={`col-date p-1 border-r text-center ${d.isWeekend ? 'bg-orange-50/50' : ''}`}>
@@ -381,18 +339,18 @@ export default function App() {
                   let offCount = 0;
                   return (
                     <tr key={driver.id} className="hover:bg-slate-50/50 transition-colors">
-                      {/* 姓名欄位 */}
-                      <td className="col-name p-3 font-bold sticky-left-1 bg-white z-20 border-r text-slate-700 whitespace-nowrap overflow-hidden shadow-[1px_0_0_0_#f1f5f9]">
+                      {/* 姓名欄位 - 鎖定 */}
+                      <td className="col-name p-3 font-bold sticky-left-1 bg-white z-20 border-r text-slate-700 whitespace-nowrap shadow-[1px_0_0_0_#f1f5f9]">
                         {driver.name.split('(')[0]}
                       </td>
                       
-                      {/* 車號欄位 (互換) */}
+                      {/* 車號欄位 - 鎖定 */}
                       <td className="col-plate p-3 font-mono text-slate-400 sticky-left-2 bg-white z-20 border-r text-[10px] shadow-[1px_0_0_0_#f1f5f9]">
                         {driver.carPlate}
                       </td>
 
-                      {/* 車型欄位 (互換 & 手機版不鎖定) */}
-                      <td className="col-type p-3 text-slate-400 font-bold bg-white border-r text-[10px]">
+                      {/* 車型欄位 - 手機版不鎖定 */}
+                      <td className="col-type p-3 text-slate-400 font-bold bg-white border-r text-[10px] col-type-cell">
                         {driver.carType}
                       </td>
 
@@ -408,7 +366,7 @@ export default function App() {
                             <div className="flex items-center justify-center w-full h-full">
                               {s === STATUS.OFF && <span className="text-red-500 font-black text-base">✕</span>}
                               {s === STATUS.MOBILE && <span className="text-blue-500 font-black text-lg">◇</span>}
-                              {s === STATUS.SPECIAL && <span className="bg-purple-500 text-white text-[9px] px-1 rounded font-bold">特</span>}
+                              {s === STATUS.SPECIAL && <span className="text-purple-600 font-black text-[12px]">特</span>}
                             </div>
                           </td>
                         );
